@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snake</title>
+<style>
+  :root{--bg:#0d1117;--grid:#161b22;--snake:#39d98a;--food:#ff5c7c;--ink:#e6edf3}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+    font:16px system-ui,sans-serif;display:flex;flex-direction:column;align-items:center}
+  header{width:min(420px,100% - 24px);display:flex;gap:8px;align-items:center;margin:22px 0 12px}
+  header h1{font-size:18px;margin:0;flex:0 0 auto}
+  header .score{margin-left:auto;font:600 15px ui-monospace,monospace;color:var(--snake)}
+  canvas{background:var(--grid);border-radius:12px;touch-action:none;max-width:calc(100% - 24px)}
+  .hint{color:#8b949e;font-size:13px;margin:12px 0 28px;text-align:center}
+  .hint kbd{background:#21262d;border-radius:4px;padding:1px 6px;font:12px ui-monospace,monospace}
+</style>
+</head>
+<body>
+  <header><h1>Snake</h1><span class="score">0</span></header>
+  <canvas id="c" width="420" height="420"></canvas>
+  <p class="hint"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> or <kbd>WASD</kbd> to move
+     · <kbd>Space</kbd> to pause · eat the pink dots</p>
+<script>
+(function(){
+  var cv=document.getElementById("c"),g=cv.getContext("2d"),scoreEl=document.querySelector(".score");
+  var N=21,CELL=cv.width/N;
+  var snake,dir,nextDir,food,score,dead,paused,timer;
+  function reset(){
+    snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+    dir={x:1,y:0};nextDir=dir;score=0;dead=false;paused=false;placeFood();draw();
+    scoreEl.textContent=0;
+  }
+  function placeFood(){
+    do{food={x:(Math.random()*N)|0,y:(Math.random()*N)|0};}
+    while(snake.some(function(s){return s.x===food.x&&s.y===food.y;}));
+  }
+  function step(){
+    if(dead||paused)return;
+    dir=nextDir;
+    var head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+    if(head.x<0||head.y<0||head.x>=N||head.y>=N||snake.some(function(s){return s.x===head.x&&s.y===head.y;})){
+      dead=true;draw();return;
+    }
+    snake.unshift(head);
+    if(head.x===food.x&&head.y===food.y){score++;scoreEl.textContent=score;placeFood();}
+    else snake.pop();
+    draw();
+  }
+  function cell(x,y,color,inset){g.fillStyle=color;g.fillRect(x*CELL+inset,y*CELL+inset,CELL-2*inset,CELL-2*inset);}
+  function draw(){
+    g.fillStyle=getCss("--grid");g.fillRect(0,0,cv.width,cv.height);
+    cell(food.x,food.y,getCss("--food"),4);
+    snake.forEach(function(s,i){cell(s.x,s.y,i===0?"#5ff0a8":getCss("--snake"),1);});
+    if(dead){banner("Game over","press any key");}
+    else if(paused){banner("Paused","press space");}
+  }
+  function banner(a,b){
+    g.fillStyle="rgba(5,8,12,.68)";g.fillRect(0,0,cv.width,cv.height);
+    g.fillStyle="#e6edf3";g.textAlign="center";
+    g.font="700 30px system-ui,sans-serif";g.fillText(a,cv.width/2,cv.height/2-6);
+    g.font="14px system-ui,sans-serif";g.fillStyle="#8b949e";g.fillText(b,cv.width/2,cv.height/2+22);
+  }
+  function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+  function turn(x,y){if(x===-dir.x&&y===-dir.y)return;nextDir={x:x,y:y};}
+  var KEYS={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],
+            w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]};
+  document.addEventListener("keydown",function(ev){
+    if(document.activeElement&&document.activeElement.tagName==="INPUT")return;
+    if(dead){reset();return;}
+    if(ev.key===" "){paused=!paused;draw();ev.preventDefault();return;}
+    var k=KEYS[ev.key];if(k){turn(k[0],k[1]);ev.preventDefault();}
+  });
+  var tStart=null;
+  cv.addEventListener("touchstart",function(e){tStart=e.touches[0];},{passive:true});
+  cv.addEventListener("touchend",function(e){
+    if(!tStart)return;var t=e.changedTouches[0];
+    var dx=t.clientX-tStart.clientX,dy=t.clientY-tStart.clientY;
+    if(Math.abs(dx)<12&&Math.abs(dy)<12){if(dead)reset();return;}
+    if(Math.abs(dx)>Math.abs(dy))turn(dx>0?1:-1,0);else turn(0,dy>0?1:-1);
+  },{passive:true});
+  reset();
+  timer=setInterval(step,110);
+})();
+</script>
+</body>
+</html>
